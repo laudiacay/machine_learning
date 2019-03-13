@@ -65,6 +65,7 @@ def train(sentences, enc_model, dec_model, enc_opt, dec_opt, criterion):
     enc_opt.zero_grad()
     dec_opt.zero_grad()
     loss = 0
+    total_accuracy = 0
     for out, exp_out in zip(output, sent_2):
         loss += criterion(out, exp_out)
         total_accuracy += int(rd.get_word_from_embedded(out)\
