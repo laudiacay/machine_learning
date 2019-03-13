@@ -34,10 +34,17 @@ class LSTM(nn.Module):
 
         out = []
         h_t, c_t = h_0, c_0
-
-        for x in x_seq:
-            h_t, c_t = one_step(x, h_t, c_t)
-            out.append(h_t)
+        if x_seq is not None:
+            for x in x_seq:
+                h_t, c_t = one_step(x, h_t, c_t)
+                out.append(h_t)
+        else:
+            dummy_x = torch.tensor([])
+            while True:
+                h_t, c_t = one_step(dummy_x, h_t, c_t)
+                out.append(h_t)
+                if get_word_from_embedded(h_t) == '</s>':
+                    break
 
         return out, (h_t, c_t)
 
@@ -46,8 +53,8 @@ class LSTM(nn.Module):
 
 def train(sentences, enc_model, dec_model, enc_opt, dec_opt, criterion):
     sent_1, sent_2 = sentences
-    _, (hidden, ctx) = enc_model(sent_1, None, None)
-    output, _ = dec_model(sent_2, hidden.detach(), ctx.detach())
+    _, (hidden, ctx) = enc_model.forward(sent_1, None, None)
+    output, _ = dec_model.forward(None, hidden.detach(), ctx.detach())
 
     enc_opt.zero_grad()
     dec_opt.zero_grad()
@@ -59,10 +66,14 @@ def train(sentences, enc_model, dec_model, enc_opt, dec_opt, criterion):
     dec_opt.step()
     return loss
 
+def predict(sent_1, enc_model, dec_model):
+    _, (hidden, ctx) = enc_model(sent_1, None, None)
+
+
 train_data, dev_data, test_data = read_data.get_embedded_data()
 
 enc_model = LSTM(200, 200)
-dec_model = LSTM(200, 200)
+dec_model = LSTM(0, 200)
 
 # PERFORMANCE: torch.optim.Adam?
 enc_opt = torch.optim.SGD(enc_model.parameters(), lr=LEARNING_RATE)
@@ -71,4 +82,8 @@ dec_opt = torch.optim.SGD(dec_model.parameters(), lr=LEARNING_RATE)
 # PERFORMANCE: change loss to softmax/cross-entropy loss?
 loss_func = nn.MSELoss()
 
+N_ITERS = 100000
+logint = 10000
+losses = []
+all_losses = []
 train(train_data[0], enc_model, dec_model, enc_opt, dec_opt, loss_func)
