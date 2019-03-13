@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import read_data as rd
 import random, time
+from tqdm import tqdm
 
 LEARNING_RATE = 1e-3
 
@@ -99,7 +100,7 @@ def train_main():
     accuracies = []
     start = time.time()
 
-    for i in range(N_ITERS):
+    for i in tqdm(range(N_ITERS)):
         training_example = random.choice(train_data)
         out, loss, accuracy = train(training_example, enc_model, dec_model, enc_opt, dec_opt, loss_func)
         losses.append(loss)
