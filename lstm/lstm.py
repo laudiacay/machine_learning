@@ -57,6 +57,7 @@ class LSTM(nn.Module):
 
 def train(sentences, enc_model, dec_model, enc_opt, dec_opt, criterion):
     sent_1, sent_2 = sentences
+    sent_1, sent_2 = torch.tensor(sent_1), torch.tensor(sent_2)
     _, (hidden, ctx) = enc_model.forward(sent_1, None, None)
     output, _ = dec_model.forward(sent_2, hidden.detach(), ctx.detach())
 
@@ -79,6 +80,26 @@ def train(sentences, enc_model, dec_model, enc_opt, dec_opt, criterion):
 
 def predict(sent_1, enc_model, dec_model):
     _, (hidden, ctx) = enc_model(sent_1, None, None)
+    output, _ = dec_model.forward(None, hidden.detach(), ctx.detach())
+    return output
+
+def predict_data(sentence, enc_model, dec_model, debug=False):
+    output = predict(sentence[0], enc_model, dec_model)
+    total_accuracy = 0
+
+    if debug:
+        in_sent = [rd.get_word_from_embedded(w) for w in sentence[0]]
+        print('input:', ' '.join(in_sent))
+        exp_out = [rd.get_word_from_embedded(w) for w in sentence[1]]
+        print('exp_out:', ' '.join(exp_out))
+        preds = [rd.get_word_from_embedded(out) for out in output]
+        print('predictions:', ' '.join(preds))
+
+    for out, exp_out in zip(output, sentence[1]):
+        total_accuracy += int(rd.get_word_from_embedded(out)\
+                            == rd.get_word_from_embedded(exp_out))
+    accuracy = total_accuracy / min(len(output), len(sent_2))
+    return preds, output, accuracy
 
 def train_main():
     train_data, dev_data, test_data = rd.get_embedded_data()
@@ -100,7 +121,7 @@ def train_main():
     accuracies = []
     start = time.time()
 
-    for i in tqdm(range(N_ITERS)):
+    for i in tqdm(range(N_ITERS + 1)):
         training_example = random.choice(train_data)
         out, loss, accuracy = train(training_example, enc_model, dec_model, enc_opt, dec_opt, loss_func)
         losses.append(loss)
@@ -125,9 +146,15 @@ def load_main():
     dec_model = LSTM(200, 200)
     dec_model.load_state_dict(torch.load('dec_model.pth'))
     dec_model.eval()
+    train_data, dev_data, test_data = rd.get_embedded_data()
+    print(test_data[:10])
+    for i, dev in enumerate(dev_data):
+        if i % 100 == 0: debug = True
+        else: debug = False
+        out, acc = predict_data(dev, enc_model, dec_model, debug=debug)
 
 if __name__ == '__main__':
-    TRAIN = True
+    TRAIN = False
     if TRAIN:
         train_main()
     else:
