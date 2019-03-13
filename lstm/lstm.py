@@ -44,7 +44,7 @@ class LSTM(nn.Module):
         return out, (h_t, c_t)
 
     def init_hidden(self):
-        return torch.zeros(1, self.hid_size)
+        return torch.zeros(self.hid_size)
 
 def train(sentences, enc_model, dec_model, enc_opt, dec_opt, criterion):
     sent_1, sent_2 = sentences
