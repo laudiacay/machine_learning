@@ -48,8 +48,12 @@ def get_word_from_embedded(output):
     _, ind = dotted.softmax(0).max(0)
     return vocab_lst[ind]
 
-# PERFORMANCE: set scale_grad_by_freq = True in embedding?
-# PERFORMANCE: should I treat </s> as another dimension?
-vocab_lst = read_vocab('bobsue-data/bobsue.voc.txt')
-vocab_ixs = {k: v for v, k in enumerate(vocab_lst)}
-embedding = (torch.rand([len(vocab_lst), EMBEDDING_SIZE]) / 5.0) - 0.1
+def gen_embedding(LOAD=False):
+    global vocab_lst, vocab_ixs, embedding
+    vocab_lst = read_vocab('bobsue-data/bobsue.voc.txt')
+    vocab_ixs = {k: v for v, k in enumerate(vocab_lst)}
+    if LOAD:
+        embedding = torch.load('embedding.pth')
+    else:
+        embedding = (torch.rand([len(vocab_lst), EMBEDDING_SIZE]) / 5.0) - 0.1
+        torch.save(embedding, 'embedding.pth')

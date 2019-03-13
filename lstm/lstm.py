@@ -1,13 +1,15 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+torch.manual_seed(42)
+
 import read_data as rd
 import random, time
 from tqdm import tqdm
 
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 0.005
 
-torch.manual_seed(42)
 
 class LSTM(nn.Module):
     def __init__(self, inp_size, hid_size):
@@ -48,6 +50,7 @@ class LSTM(nn.Module):
                 # IS THIS CORRECT?!
                 x = rd.get_embedding(rd.get_word_from_embedded(h_t))
                 pred = rd.get_word_from_embedded(h_t)
+                print(pred)
                 if pred == '</s>':
                     break
         return out, (h_t, c_t)
@@ -160,7 +163,8 @@ def load_main():
     print('overall dev accuracy:', sum(acc)/len(acc))
 
 if __name__ == '__main__':
-    TRAIN = False
+    TRAIN = True
+    rd.gen_embedding(LOAD=not TRAIN)
     if TRAIN:
         train_main()
     else:
