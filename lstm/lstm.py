@@ -39,27 +39,36 @@ class LSTM(nn.Module):
             h_t, c_t = one_step(x, h_t, c_t)
             out.append(h_t)
 
-        out = torch.cat(out, 0)
-
         return out, (h_t, c_t)
 
     def init_hidden(self):
         return torch.zeros(1, self.hid_size)
 
-def train(first_sent, second_sent, model, optimizer, criterion):
-    hidden, ctx = None, None
-    optimizer.zero_grad()
-    loss = criterion(output, category_tensor)
+def train(sentences, enc_model, dec_model, enc_opt, dec_opt, criterion):
+    sent_1, sent_2 = sentences
+    _, (hidden, ctx) = enc_model(sent_1, None, None)
+    output, _ = dec_model(sent_2, hidden.detach(), ctx.detach())
+
+    enc_opt.zero_grad()
+    dec_opt.zero_grad()
+    loss = 0
+    for out, exp_out in zip(output, sent_2):
+        loss += criterion(out, exp_out)
+    loss.backward()
+    enc_opt.step()
+    dec_opt.step()
+    return loss
 
 train_data, dev_data, test_data = read_data.get_embedded_data()
 
-model = LSTM(200, 200)
+enc_model = LSTM(200, 200)
+dec_model = LSTM(200, 200)
 
 # PERFORMANCE: torch.optim.Adam?
-opt = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
+enc_opt = torch.optim.SGD(enc_model.parameters(), lr=LEARNING_RATE)
+dec_opt = torch.optim.SGD(dec_model.parameters(), lr=LEARNING_RATE)
 
 # PERFORMANCE: change loss to softmax/cross-entropy loss?
 loss_func = nn.MSELoss()
 
-lstm.zero_grad()
-loss.backward()
+train(train_data[0], enc_model, dec_model, enc_opt, dec_opt, loss_func)
