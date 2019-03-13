@@ -47,5 +47,5 @@ vocab_lst = read_vocab('bobsue-data/bobsue.voc.txt')
 vocab_ixs = {k: v for v, k in enumerate(vocab_lst)}
 embedding = (torch.rand([len(vocab_lst), EMBEDDING_SIZE]) / 5.0) - 0.1
 
-print(vocab_lst[9230])
-print(get_word_from_embedded(embedding[9230]))
+print(vocab_lst[1400])
+print(get_word_from_embedded(embedding[1400]))
