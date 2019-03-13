@@ -21,7 +21,7 @@ SENTENCES.build_vocab(train, dev, test)
 # random embedding
 random_embedding = [torch.rand(EMBEDDING_SIZE) / 5.0 - 0.1
                         for _ in range(len(SENTENCES.vocab))]
-SENTENCES.vocab.set_vectors(SENTENCES.vocab.stoi, random_embedding, 1)
+SENTENCES.vocab.set_vectors(SENTENCES.vocab.stoi, random_embedding, 200)
 
 # pretrained embeddings
 SENTENCES.vocab.load_vectors('glove.6B.200d')
