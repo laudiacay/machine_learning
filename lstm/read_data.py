@@ -3,14 +3,6 @@ import random
 
 EMBEDDING_SIZE = 200
 
-# PERFORMANCE: set scale_grad_by_freq = True in embedding?
-# PERFORMANCE: change distribution of embedding to uniform on [-0.1, 0.1]?
-# PERFORMANCE: set max_norm in embedding?
-# PERFORMANCE: should I treat </s> as another dimension?
-vocab_lst = read_vocab('bobsue-data/bobsue.voc.txt')
-vocab_ixs = {k: v for v, k in enumerate(vocab_lst)}
-embedding = (torch.rand([len(vocab_lst), EMBEDDING_SIZE]) / 5.0) - 0.1
-
 def read_vocab(vocab_file):
     # puts words from vocab_file into a list of strings
     with open(vocab_file) as f:
@@ -47,6 +39,13 @@ def get_word_from_embedded(output):
     dotted = torch.matmul(embedding, output)
     softmaxed = torch.nn.functional.softmax(dotted)
     return vocab_lst[softmaxed.max()]
+# PERFORMANCE: set scale_grad_by_freq = True in embedding?
+# PERFORMANCE: change distribution of embedding to uniform on [-0.1, 0.1]?
+# PERFORMANCE: set max_norm in embedding?
+# PERFORMANCE: should I treat </s> as another dimension?
+vocab_lst = read_vocab('bobsue-data/bobsue.voc.txt')
+vocab_ixs = {k: v for v, k in enumerate(vocab_lst)}
+embedding = (torch.rand([len(vocab_lst), EMBEDDING_SIZE]) / 5.0) - 0.1
 
 print(vocab_lst[9230])
 print(get_word_from_embedded(embedding[9230]))
