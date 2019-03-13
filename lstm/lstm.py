@@ -23,6 +23,8 @@ class LSTM(nn.Module):
         if c_0 is None: c_0 = self.init_hidden()
 
         def one_step(x, h_i, c_i):
+            print(x.shape)
+            print(h_i.shape)
             stacked = torch.cat((x, h_i), 0)
             i = F.sigmoid(self.Wi(stacked))
             f = F.sigmoid(self.Wf(stacked))
