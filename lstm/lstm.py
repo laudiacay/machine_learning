@@ -43,7 +43,9 @@ class LSTM(nn.Module):
             while True:
                 h_t, c_t = one_step(dummy_x, h_t, c_t)
                 out.append(h_t)
-                if read_data.get_word_from_embedded(h_t) == '</s>':
+                pred = read_data.get_word_from_embedded(h_t)
+                print(pred)
+                if pred == '</s>':
                     break
 
         return out, (h_t, c_t)
@@ -54,7 +56,7 @@ class LSTM(nn.Module):
 def train(sentences, enc_model, dec_model, enc_opt, dec_opt, criterion):
     sent_1, sent_2 = sentences
     _, (hidden, ctx) = enc_model.forward(sent_1, None, None)
-    output, _ = dec_model.forward(None, hidden.detach(), ctx.detach())
+    output, _ = dec_model.forward(sent_2, hidden.detach(), ctx.detach())
 
     enc_opt.zero_grad()
     dec_opt.zero_grad()
