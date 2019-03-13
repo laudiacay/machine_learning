@@ -15,6 +15,9 @@ def read_tsv(tsv_file):
         examples = f.read().splitlines()
     return [e.split() for e in examples]
 
+def get_embedding(word):
+    return embedding[vocab_ixs[word]]
+
 # list of word strings -> tuple of lists of tensors of embeddings for words
 def sentence_list_to_tensors(sentence):
     tensors_1 = []
@@ -23,9 +26,9 @@ def sentence_list_to_tensors(sentence):
     fst_sent = sentence[:snd_sent_ind + 1]
     snd_sent = sentence[snd_sent_ind + 1:]
     for word in fst_sent:
-        tensors_1.append(embedding[vocab_ixs[word]])
+        tensors_1.append(get_embedding(word))
     for word in snd_sent:
-        tensors_2.append(embedding[vocab_ixs[word]])
+        tensors_2.append(get_embedding(word))
     return tensors_1, tensors_2
 
 def all_data_to_tensors(sentences):
