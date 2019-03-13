@@ -43,7 +43,7 @@ class LSTM(nn.Module):
             while True:
                 h_t, c_t = one_step(dummy_x, h_t, c_t)
                 out.append(h_t)
-                if get_word_from_embedded(h_t) == '</s>':
+                if read_data.get_word_from_embedded(h_t) == '</s>':
                     break
 
         return out, (h_t, c_t)
