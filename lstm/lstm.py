@@ -146,10 +146,11 @@ def load_main():
     dec_model = LSTM(200, 200)
     dec_model.load_state_dict(torch.load('dec_model.pth'))
     dec_model.eval()
+    print('loaded models.')
     train_data, dev_data, test_data = rd.get_embedded_data()
     # (test_data[:10])
     all_accuracies = []
-    for i, dev in enumerate(dev_data):
+    for i, dev in tqdm(enumerate(dev_data)):
         if i % 100 == 0: debug = True
         else: debug = False
         out, acc = predict_data(dev, enc_model, dec_model, debug=debug)
