@@ -41,15 +41,19 @@ class LSTM(nn.Module):
 
         out = torch.cat(out, 0)
 
-        return out, h_t, c_t
+        return out, (h_t, c_t)
 
     def init_hidden(self):
         return torch.zeros(1, self.hid_size)
 
-def train(, model, optimizer, criterion):
+def train(first_sent, second_sent, model, optimizer, criterion):
+    hidden, ctx = None, None
+    optimizer.zero_grad()
+    loss = criterion(output, category_tensor)
 
-encoder_model = LSTM(200, 200)
-decoder_model = LSTM(200, 200)
+train_data, dev_data, test_data = read_data.get_embedded_data()
+
+model = LSTM(200, 200)
 
 # PERFORMANCE: torch.optim.Adam?
 opt = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)

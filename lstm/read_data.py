@@ -1,5 +1,4 @@
 import torch
-import random
 
 EMBEDDING_SIZE = 200
 
@@ -16,12 +15,18 @@ def read_tsv(tsv_file):
         examples = f.read().splitlines()
     return [e.split() for e in examples]
 
-# list of word strings -> list of tensors of embeddings for words
+# list of word strings -> tuple of lists of tensors of embeddings for words
 def sentence_list_to_tensors(sentence):
-    tensors = []
-    for word in sentence:
-        tensors.append(embedding[vocab_ixs[word]])
-    return tensors
+    tensors_1 = []
+    tensors_2 = []
+    snd_sent_ind = sentence.indexof('</s>')
+    fst_sent = sentence[:snd_sent_ind + 1]
+    snd_sent = sentence[snd_sent_ind + 1:]
+    for word in fst_sent:
+        tensors_1.append(embedding[vocab_ixs[word]])
+    for word in snd_sent:
+        tensors_2.append(embedding[vocab_ixs[word]])
+    return tensors_1, tensors_2
 
 def all_data_to_tensors(sentences):
     return [sentence_list_to_tensors(sentence) for sentence in sentences]
@@ -39,6 +44,7 @@ def get_word_from_embedded(output):
     dotted = torch.matmul(embedding, output)
     _, ind = dotted.softmax(0).max(0)
     return vocab_lst[ind]
+
 # PERFORMANCE: set scale_grad_by_freq = True in embedding?
 # PERFORMANCE: change distribution of embedding to uniform on [-0.1, 0.1]?
 # PERFORMANCE: set max_norm in embedding?
@@ -46,6 +52,3 @@ def get_word_from_embedded(output):
 vocab_lst = read_vocab('bobsue-data/bobsue.voc.txt')
 vocab_ixs = {k: v for v, k in enumerate(vocab_lst)}
 embedding = (torch.rand([len(vocab_lst), EMBEDDING_SIZE]) / 5.0) - 0.1
-
-print(vocab_lst[1400])
-print(get_word_from_embedded(embedding[1400]))
