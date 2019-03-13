@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import read_data
+import read_data as rd
 
 LEARNING_RATE = 1e-3
 
@@ -39,13 +39,13 @@ class LSTM(nn.Module):
                 h_t, c_t = one_step(x, h_t, c_t)
                 out.append(h_t)
         else:
-            x = read_data.get_embedding('<s>')
+            x = rd.get_embedding('<s>')
             while True:
                 h_t, c_t = one_step(x, h_t, c_t)
                 out.append(h_t)
                 # IS THIS CORRECT?!
-                x = get_embedding(get_word_from_embedded(h_t))
-                pred = get_word_from_embedded(h_t)
+                x = rd.get_embedding(rd.get_word_from_embedded(h_t))
+                pred = rd.get_word_from_embedded(h_t)
                 if pred == '</s>':
                     break
         return out, (h_t, c_t)
@@ -58,7 +58,7 @@ def train(sentences, enc_model, dec_model, enc_opt, dec_opt, criterion):
     _, (hidden, ctx) = enc_model.forward(sent_1, None, None)
     output, _ = dec_model.forward(sent_2, hidden.detach(), ctx.detach())
 
-    preds = [get_word_from_embedded(out) for out in output]
+    preds = [rd.get_word_from_embedded(out) for out in output]
     print(preds)
 
     enc_opt.zero_grad()
@@ -75,7 +75,7 @@ def predict(sent_1, enc_model, dec_model):
     _, (hidden, ctx) = enc_model(sent_1, None, None)
 
 
-train_data, dev_data, test_data = read_data.get_embedded_data()
+train_data, dev_data, test_data = rd.get_embedded_data()
 
 enc_model = LSTM(200, 200)
 dec_model = LSTM(200, 200)
