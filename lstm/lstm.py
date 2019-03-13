@@ -147,11 +147,14 @@ def load_main():
     dec_model.load_state_dict(torch.load('dec_model.pth'))
     dec_model.eval()
     train_data, dev_data, test_data = rd.get_embedded_data()
-    print(test_data[:10])
+    # (test_data[:10])
+    all_accuracies = []
     for i, dev in enumerate(dev_data):
         if i % 100 == 0: debug = True
         else: debug = False
         out, acc = predict_data(dev, enc_model, dec_model, debug=debug)
+        all_accuracies.append(acc)
+    print('overall dev accuracy:', sum(acc)/len(acc))
 
 if __name__ == '__main__':
     TRAIN = False
