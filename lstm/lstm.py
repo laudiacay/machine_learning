@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import read_data as rd
 import random, time
-import numpy as np
 
 LEARNING_RATE = 1e-3
 
@@ -108,8 +107,8 @@ def train_main():
         accuracies.append(accuracy)
         if i % logint == 0:
             elapsed = (time.time() - start) / 60
-            avg_loss = np.mean(losses)
-            acc = np.mean(accuracies)
+            avg_loss = sum(losses)/len(losses)
+            acc = sum(accuracies)/len(accuracies)
             print('Iter {:7} | Loss: {:5.3f} | Acc: {:.3f} | Elapsed: {:.2f}min'.format(i, avg_loss, acc, elapsed))
             accuracies = []
             losses = []
