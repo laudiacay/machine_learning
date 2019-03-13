@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import read_data as rd
-import random
+import random, time
 
 LEARNING_RATE = 1e-3
 
