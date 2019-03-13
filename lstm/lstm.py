@@ -150,7 +150,9 @@ def load_main():
     train_data, dev_data, test_data = rd.get_embedded_data()
     # (test_data[:10])
     all_accuracies = []
-    for i, dev in tqdm(enumerate(dev_data)):
+    print(len(dev_data))
+    for i in tqdm(range(len(dev_data))):
+        dev = dev_data[i]
         if i % 100 == 0: debug = True
         else: debug = False
         out, acc = predict_data(dev, enc_model, dec_model, debug=debug)
