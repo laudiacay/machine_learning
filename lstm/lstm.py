@@ -60,7 +60,6 @@ class LSTM(nn.Module):
 
 def train(sentences, enc_model, dec_model, enc_opt, dec_opt, criterion):
     sent_1, sent_2 = sentences
-    sent_1, sent_2 = torch.tensor(sent_1), torch.tensor(sent_2)
     _, (hidden, ctx) = enc_model.forward(sent_1, None, None)
     output, _ = dec_model.forward(sent_2, hidden.detach(), ctx.detach())
 
