@@ -48,9 +48,9 @@ class LSTM(nn.Module):
                 h_t, c_t = one_step(x, h_t, c_t)
                 out.append(h_t)
                 # IS THIS CORRECT?!
-                x = rd.get_embedding(rd.get_word_from_embedded(h_t))
+                x = h_t 
                 pred = rd.get_word_from_embedded(h_t)
-                print(pred)
+                #print(pred)
                 if pred == '</s>':
                     break
         return out, (h_t, c_t)
@@ -58,7 +58,7 @@ class LSTM(nn.Module):
     def init_hidden(self):
         return torch.zeros(self.hid_size)
 
-def train(sentences, enc_model, dec_model, enc_opt, dec_opt, criterion):
+def train(sentences, enc_model, dec_model, enc_opt, dec_opt, criterion, debug=False):
     sent_1, sent_2 = sentences
     _, (hidden, ctx) = enc_model.forward(sent_1, None, None)
     output, _ = dec_model.forward(sent_2, hidden.detach(), ctx.detach())
@@ -78,6 +78,16 @@ def train(sentences, enc_model, dec_model, enc_opt, dec_opt, criterion):
     loss.backward()
     enc_opt.step()
     dec_opt.step()
+    
+    in_sent = [rd.get_word_from_embedded(w) for w in sent_1]
+    exp_out = [rd.get_word_from_embedded(w) for w in sent_2]
+    preds = [rd.get_word_from_embedded(out) for out in output]
+
+    if debug:
+        print('input:', ' '.join(in_sent))
+        print('exp_out:', ' '.join(exp_out))
+        print('predictions:', ' '.join(preds))
+    
     return output, loss, accuracy
 
 def predict(sent_1, enc_model, dec_model):
@@ -88,19 +98,19 @@ def predict(sent_1, enc_model, dec_model):
 def predict_data(sentence, enc_model, dec_model, debug=False):
     output = predict(sentence[0], enc_model, dec_model)
     total_accuracy = 0
+    in_sent = [rd.get_word_from_embedded(w) for w in sentence[0]]
+    exp_out = [rd.get_word_from_embedded(w) for w in sentence[1]]
+    preds = [rd.get_word_from_embedded(out) for out in output]
 
     if debug:
-        in_sent = [rd.get_word_from_embedded(w) for w in sentence[0]]
         print('input:', ' '.join(in_sent))
-        exp_out = [rd.get_word_from_embedded(w) for w in sentence[1]]
         print('exp_out:', ' '.join(exp_out))
-        preds = [rd.get_word_from_embedded(out) for out in output]
         print('predictions:', ' '.join(preds))
 
     for out, exp_out in zip(output, sentence[1]):
         total_accuracy += int(rd.get_word_from_embedded(out)\
                             == rd.get_word_from_embedded(exp_out))
-    accuracy = total_accuracy / min(len(output), len(sent_2))
+    accuracy = total_accuracy / min(len(output), len(sentence[1]))
     return preds, output, accuracy
 
 def train_main():
@@ -125,7 +135,7 @@ def train_main():
 
     for i in tqdm(range(N_ITERS + 1)):
         training_example = random.choice(train_data)
-        out, loss, accuracy = train(training_example, enc_model, dec_model, enc_opt, dec_opt, loss_func)
+        out, loss, accuracy = train(training_example, enc_model, dec_model, enc_opt, dec_opt, loss_func, debug=i%logint == 0)
         losses.append(loss)
         all_losses.append(loss)
         accuracies.append(accuracy)
@@ -157,9 +167,9 @@ def load_main():
         dev = dev_data[i]
         if i % 100 == 0: debug = True
         else: debug = False
-        out, acc = predict_data(dev, enc_model, dec_model, debug=debug)
+        preds, out, acc = predict_data(dev, enc_model, dec_model, debug=debug)
         all_accuracies.append(acc)
-    print('overall dev accuracy:', sum(acc)/len(acc))
+    print('overall dev accuracy:', sum(all_accuracies)/len(all_accuracies))
 
 if __name__ == '__main__':
     TRAIN = True
