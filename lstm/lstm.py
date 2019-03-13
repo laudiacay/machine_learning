@@ -1,15 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-
-torch.manual_seed(42)
-
-import read_data as rd
-import random, time
-from tqdm import tqdm
-
-LEARNING_RATE = 0.005
-
+from read_data import loader, EMBEDDING_SIZE, PAD_TOK, START_TOK, END_TOK
 
 class LSTM(nn.Module):
     def __init__(self, inp_size, hid_size):
@@ -38,143 +29,92 @@ class LSTM(nn.Module):
 
         out = []
         h_t, c_t = h_0, c_0
-        if x_seq is not None:
-            for x in x_seq:
-                h_t, c_t = one_step(x, h_t, c_t)
-                out.append(h_t)
-        else:
-            x = rd.get_embedding('<s>')
-            while True:
-                h_t, c_t = one_step(x, h_t, c_t)
-                out.append(h_t)
-                # IS THIS CORRECT?!
-                x = h_t 
-                pred = rd.get_word_from_embedded(h_t)
-                #print(pred)
-                if pred == '</s>':
-                    break
+        for x in x_seq:
+            h_t, c_t = one_step(x, h_t, c_t)
+            out.append(h_t)
+        
         return out, (h_t, c_t)
 
     def init_hidden(self):
         return torch.zeros(self.hid_size)
 
-def train(sentences, enc_model, dec_model, enc_opt, dec_opt, criterion, debug=False):
-    sent_1, sent_2 = sentences
-    _, (hidden, ctx) = enc_model.forward(sent_1, None, None)
-    output, _ = dec_model.forward(sent_2, hidden.detach(), ctx.detach())
+class EncoderLSTM(nn.Module):
+    def __init__(self, hid_size, SENTENCES):
+        super(EncoderLSTM, self).__init__()
+        self.hid_size = hid_size
 
-    #preds = [rd.get_word_from_embedded(out) for out in output]
-    #print(preds)
+        # TODO change to your own LSTM
+        self.lstm = nn.LSTM(EMBEDDING_SIZE, self.hid_size)
 
-    enc_opt.zero_grad()
-    dec_opt.zero_grad()
-    loss = 0
-    total_accuracy = 0
-    for out, exp_out in zip(output, sent_2):
-        loss += criterion(out, exp_out)
-        total_accuracy += int(rd.get_word_from_embedded(out)\
-                            == rd.get_word_from_embedded(exp_out))
-    accuracy = total_accuracy / min(len(output), len(sent_2))
-    loss.backward()
-    enc_opt.step()
-    dec_opt.step()
-    
-    in_sent = [rd.get_word_from_embedded(w) for w in sent_1]
-    exp_out = [rd.get_word_from_embedded(w) for w in sent_2]
-    preds = [rd.get_word_from_embedded(out) for out in output]
+        # PERFORMANCE: add dropout?
+        self.embed = nn.Embedding(len(SENTENCES.vocab),
+                            EMBEDDING_SIZE,
+                            padding_idx=SENTENCES.vocab.stoi[PAD_TOK])
+        self.embed.weight.data.copy_(SENTENCES.vocab.vectors)
 
-    if debug:
-        print('input:', ' '.join(in_sent))
-        print('exp_out:', ' '.join(exp_out))
-        print('predictions:', ' '.join(preds))
-    
-    return output, loss, accuracy
+    def forward(self, x):
+        # TODO: this line might be problematic?
+        emb_x = self.embed(x)
+        _, (h_t, c_t) = self.lstm(emb_x)
+        # TODO: do you need to transpose/make contiguous/view h_t?
+        return h_t, c_t
 
-def predict(sent_1, enc_model, dec_model):
-    _, (hidden, ctx) = enc_model(sent_1, None, None)
-    output, _ = dec_model.forward(None, hidden.detach(), ctx.detach())
-    return output
 
-def predict_data(sentence, enc_model, dec_model, debug=False):
-    output = predict(sentence[0], enc_model, dec_model)
-    total_accuracy = 0
-    in_sent = [rd.get_word_from_embedded(w) for w in sentence[0]]
-    exp_out = [rd.get_word_from_embedded(w) for w in sentence[1]]
-    preds = [rd.get_word_from_embedded(out) for out in output]
+class DecoderLSTM(nn.Module):
+    def __init__(self, hid_size, SENTENCES):
+        super(DecoderLSTM, self).__init__()
+        self.hid_size = hid_size
+        out_size = len(SENTENCES.vocab)
 
-    if debug:
-        print('input:', ' '.join(in_sent))
-        print('exp_out:', ' '.join(exp_out))
-        print('predictions:', ' '.join(preds))
+        # TODO change to your own LSTM
+        self.lstm = nn.LSTM(EMBEDDING_SIZE, self.hid_size)
 
-    for out, exp_out in zip(output, sentence[1]):
-        total_accuracy += int(rd.get_word_from_embedded(out)\
-                            == rd.get_word_from_embedded(exp_out))
-    accuracy = total_accuracy / min(len(output), len(sentence[1]))
-    return preds, output, accuracy
+        self.embed = nn.Embedding(out_size, EMBEDDING_SIZE,
+                            padding_idx=SENTENCES.vocab.stoi[PAD_TOK])
+        self.embed.weight.data.copy_(SENTENCES.vocab.vectors)
 
-def train_main():
-    train_data, dev_data, test_data = rd.get_embedded_data()
+        self.out_layer = nn.Linear(self.hid_size, out_size)
+        # PERFORMANCE: add dropout?
 
-    enc_model = LSTM(200, 200)
-    dec_model = LSTM(200, 200)
+    def forward(self, x, h_t, c_t):
+        # TODO: do i need to unsqueeze x?
+        emb_x = self.embed(x)
+        out, (h_t, c_t) = self.lstm(emb_x, (h_t, c_t))
+        # TODO: do i need to squeeze out?
+        pred = self.out_layer(out)
+        return pred, (h_t, c_t)
 
-    # PERFORMANCE: torch.optim.Adam?
-    enc_opt = torch.optim.SGD(enc_model.parameters(), lr=LEARNING_RATE)
-    dec_opt = torch.optim.SGD(dec_model.parameters(), lr=LEARNING_RATE)
 
-    # PERFORMANCE: change loss to softmax/cross-entropy loss?
-    loss_func = nn.MSELoss()
+class Seq2Seq(nn.Module):
+    def __init__(self, hid_size, SENTENCES):
+        super(Seq2Seq, self).__init__()
+        self.hid_size = hid_size
+        self.SENTENCES = SENTENCES
 
-    N_ITERS = 100000
-    logint = 10000
-    losses = []
-    all_losses = []
-    accuracies = []
-    start = time.time()
+        self.encoder = EncoderLSTM(self.hid_size, self.SENTENCES)
+        self.decoder = DecoderLSTM(self.hid_size, self.SENTENCES)
 
-    for i in tqdm(range(N_ITERS + 1)):
-        training_example = random.choice(train_data)
-        out, loss, accuracy = train(training_example, enc_model, dec_model, enc_opt, dec_opt, loss_func, debug=i%logint == 0)
-        losses.append(loss)
-        all_losses.append(loss)
-        accuracies.append(accuracy)
-        if i % logint == 0:
-            elapsed = (time.time() - start) / 60
-            avg_loss = sum(losses)/len(losses)
-            acc = sum(accuracies)/len(accuracies)
-            print('Iter {:7} | Loss: {:5.3f} | Acc: {:.3f} | Elapsed: {:.2f}min'.format(i, avg_loss, acc, elapsed))
-            accuracies = []
-            losses = []
+    def forward(self, input, target):
+        outputs = []
 
-    torch.save(enc_model.state_dict(), 'enc_model.pth')
-    torch.save(dec_model.state_dict(), 'dec_model.pth')
+        h_i, c_i = self.encoder.forward(input)
 
-def load_main():
-    print('loading models from files!')
-    enc_model = LSTM(200, 200)
-    enc_model.load_state_dict(torch.load('enc_model.pth'))
-    enc_model.eval()
-    dec_model = LSTM(200, 200)
-    dec_model.load_state_dict(torch.load('dec_model.pth'))
-    dec_model.eval()
-    print('loaded models.')
-    train_data, dev_data, test_data = rd.get_embedded_data()
-    # (test_data[:10])
-    all_accuracies = []
-    print(len(dev_data))
-    for i in tqdm(range(len(dev_data))):
-        dev = dev_data[i]
-        if i % 100 == 0: debug = True
-        else: debug = False
-        preds, out, acc = predict_data(dev, enc_model, dec_model, debug=debug)
-        all_accuracies.append(acc)
-    print('overall dev accuracy:', sum(all_accuracies)/len(all_accuracies))
+        if target is not None:
+            x_i = target[0, :]
+            # TODO I think there's maybe a type/embedding issue here?
+            for i in range(1, target.shape[0]):
+                output, (h_i, c_i) = self.decoder.forward(x_i, h_i, c_i)
+                outputs.append(output)
+                x_i = target[i]
+        else:
+            x_i = self.SENTENCES.stoi[START_TOK]
+            while True:
+                output, (h_i, c_i) = self.decoder.forward(x_i, h_i, c_i)
+                outputs.append(output)
+                pred = output.max(1)[1]
+                x_i = pred
+                if pred == self.SENTENCES.stoi[END_TOK]:
+                    break
 
-if __name__ == '__main__':
-    TRAIN = True
-    rd.gen_embedding(LOAD=not TRAIN)
-    if TRAIN:
-        train_main()
-    else:
-        load_main()
+        return outputs
+>>>>>>> 757e405d4f4e00af518576cb500cc19d6903b01c
