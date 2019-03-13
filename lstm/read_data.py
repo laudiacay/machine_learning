@@ -19,7 +19,7 @@ def read_tsv(tsv_file):
 def sentence_list_to_tensors(sentence):
     tensors_1 = []
     tensors_2 = []
-    snd_sent_ind = sentence.indexof('</s>')
+    snd_sent_ind = sentence.index('</s>')
     fst_sent = sentence[:snd_sent_ind + 1]
     snd_sent = sentence[snd_sent_ind + 1:]
     for word in fst_sent:
@@ -46,8 +46,6 @@ def get_word_from_embedded(output):
     return vocab_lst[ind]
 
 # PERFORMANCE: set scale_grad_by_freq = True in embedding?
-# PERFORMANCE: change distribution of embedding to uniform on [-0.1, 0.1]?
-# PERFORMANCE: set max_norm in embedding?
 # PERFORMANCE: should I treat </s> as another dimension?
 vocab_lst = read_vocab('bobsue-data/bobsue.voc.txt')
 vocab_ixs = {k: v for v, k in enumerate(vocab_lst)}
