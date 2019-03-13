@@ -125,6 +125,7 @@ def load_main():
     dec_model.eval()
 
 if __name__ == '__main__':
+    TRAIN = True
     if TRAIN:
         train_main()
     else:
