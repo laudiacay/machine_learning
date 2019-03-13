@@ -1,4 +1,5 @@
-import torch
+import torchtext
+from torchtext import data, vocab
 
 EMBEDDING_SIZE = 200
 
@@ -7,13 +8,6 @@ def read_vocab(vocab_file):
     with open(vocab_file) as f:
         vocab_list = f.read().splitlines()
     return vocab_list
-
-# returns a list of sentences
-# where a sentence is represented as a list of word strings
-def read_tsv(tsv_file):
-    with open(tsv_file) as f:
-        examples = f.read().splitlines()
-    return [e.split() for e in examples]
 
 def get_embedding(word):
     return embedding[vocab_ixs[word]]
@@ -35,9 +29,15 @@ def all_data_to_tensors(sentences):
     return [sentence_list_to_tensors(sentence) for sentence in sentences]
 
 def get_embedded_data():
-    train_raw = read_tsv('bobsue-data/bobsue.seq2seq.train.tsv')
-    dev_raw = read_tsv('bobsue-data/bobsue.seq2seq.dev.tsv')
-    test_raw = read_tsv('bobsue-data/bobsue.seq2seq.test.tsv')
+    SENTENCES = data.Field()
+
+    train, val, test = data.TabularDataset.splits(
+        path='bobsue-data/',
+        train='bobsue.seq2seq.train.tsv',
+        validation='bobsue.seq2seq.dev.tsv',
+        test='bobsue.seq2seq.test.tsv',
+        format='tsv', fields=[('sent_1', SENTENCES), ('sent_2', SENTENCES)]
+    )
     train_data = all_data_to_tensors(train_raw)
     dev_data = all_data_to_tensors(dev_raw)
     test_data = all_data_to_tensors(test_raw)
