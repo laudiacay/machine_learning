@@ -48,7 +48,7 @@ class LSTM(nn.Module):
                 h_t, c_t = one_step(x, h_t, c_t)
                 out.append(h_t)
                 # IS THIS CORRECT?!
-                x = rd.get_embedding(rd.get_word_from_embedded(h_t))
+                x = h_t 
                 pred = rd.get_word_from_embedded(h_t)
                 print(pred)
                 if pred == '</s>':
