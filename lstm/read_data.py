@@ -37,8 +37,8 @@ def get_embedded_data():
 
 def get_word_from_embedded(output):
     dotted = torch.matmul(embedding, output)
-    softmaxed = torch.nn.functional.softmax(dotted)
-    return vocab_lst[softmaxed.max()]
+    _, ind = torch.nn.functional.softmax(dotted, dim=0).max()
+    return vocab_lst[ind]
 # PERFORMANCE: set scale_grad_by_freq = True in embedding?
 # PERFORMANCE: change distribution of embedding to uniform on [-0.1, 0.1]?
 # PERFORMANCE: set max_norm in embedding?
