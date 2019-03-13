@@ -6,7 +6,7 @@ from read_data import load, PAD_TOK
 from lstm import Seq2Seq
 
 HIDDEN_SIZE = 200
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 0.05  # maybe try 0.5?
 N_EPOCHS = 15
 
 # TODO: definitely some dimension issues here...
