@@ -1,6 +1,6 @@
 import torchtext
 from torchtext import data
-import torch.nn as nn
+import torch
 
 torch.manual_seed(42)
 
