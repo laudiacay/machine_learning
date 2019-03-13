@@ -35,7 +35,7 @@ class LSTM(nn.Module):
         out = []
         h_t, c_t = h_0, c_0
 
-        for x in x_seq.size(0):
+        for x in x_seq:
             h_t, c_t = one_step(x, h_t, c_t)
             out.append(h_t)
 
