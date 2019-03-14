@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
-from read_data import loader, EMBEDDING_SIZE, PAD_TOK, START_TOK, END_TOK
+from read_data import EMBEDDING_SIZE, PAD_TOK, START_TOK, END_TOK
+import random
 
 class LSTM(nn.Module):
     def __init__(self, inp_size, hid_size):
@@ -38,83 +39,57 @@ class LSTM(nn.Module):
     def init_hidden(self):
         return torch.zeros(self.hid_size)
 
-class EncoderLSTM(nn.Module):
-    def __init__(self, hid_size, SENTENCES):
-        super(EncoderLSTM, self).__init__()
-        self.hid_size = hid_size
-
-        # TODO change to your own LSTM
-        self.lstm = nn.LSTM(EMBEDDING_SIZE, self.hid_size)
-
-        # PERFORMANCE: add dropout?
-        self.embed = nn.Embedding(len(SENTENCES.vocab),
-                            EMBEDDING_SIZE,
-                            padding_idx=SENTENCES.vocab.stoi[PAD_TOK])
-        self.embed.weight.data.copy_(SENTENCES.vocab.vectors)
-
-    def forward(self, x):
-        # TODO: this line might be problematic?
-        emb_x = self.embed(x)
-        _, (h_t, c_t) = self.lstm(emb_x)
-        # TODO: do you need to transpose/make contiguous/view h_t?
-        return h_t, c_t
-
-
-class DecoderLSTM(nn.Module):
-    def __init__(self, hid_size, SENTENCES):
-        super(DecoderLSTM, self).__init__()
-        self.hid_size = hid_size
-        out_size = len(SENTENCES.vocab)
-
-        # TODO change to your own LSTM
-        self.lstm = nn.LSTM(EMBEDDING_SIZE, self.hid_size)
-
-        self.embed = nn.Embedding(out_size, EMBEDDING_SIZE,
-                            padding_idx=SENTENCES.vocab.stoi[PAD_TOK])
-        self.embed.weight.data.copy_(SENTENCES.vocab.vectors)
-
-        self.out_layer = nn.Linear(self.hid_size, out_size)
-        # PERFORMANCE: add dropout?
-
-    def forward(self, x, h_t, c_t):
-        # TODO: do i need to unsqueeze x?
-        emb_x = self.embed(x)
-        out, (h_t, c_t) = self.lstm(emb_x, (h_t, c_t))
-        # TODO: do i need to squeeze out?
-        pred = self.out_layer(out)
-        return pred, (h_t, c_t)
-
-
 class Seq2Seq(nn.Module):
     def __init__(self, hid_size, SENTENCES):
         super(Seq2Seq, self).__init__()
         self.hid_size = hid_size
         self.SENTENCES = SENTENCES
+        self.vocab_size = len(self.SENTENCES.vocab)
+        
+        self.one_hot_emb = nn.Embedding(self.vocab_size, self.vocab_size)
+        self.one_hot_emb.weight.data = torch.eye(self.vocab_size)
+        self.one_hot_emb.weight.requires_grad = False
 
-        self.encoder = EncoderLSTM(self.hid_size, self.SENTENCES)
-        self.decoder = DecoderLSTM(self.hid_size, self.SENTENCES)
+        self.embed_in = nn.Linear(self.vocab_size, EMBEDDING_SIZE)
+        self.encoder = nn.LSTM(EMBEDDING_SIZE, self.hid_size)
+        self.decoder = nn.LSTM(EMBEDDING_SIZE, self.hid_size)
+        self.embed_out = nn.Linear(self.hid_size, self.vocab_size)
+    
+    def init_hidden(self, batch_size):
+        return torch.zeros([batch_size, self.hid_size]).unsqueeze(0)
 
-    def forward(self, input, target):
+    def forward(self, first_sent, target, teacher_forcing_rate=0.5):
+        batch_size = first_sent.shape[1]
+        embedded_input = self.embed_in.forward(self.one_hot_emb(first_sent))
+        h_i, c_i = self.init_hidden(batch_size), self.init_hidden(batch_size)
+        _, (h_i, c_i) = self.encoder.forward(embedded_input, (h_i, c_i))
+
         outputs = []
 
-        h_i, c_i = self.encoder.forward(input)
-
         if target is not None:
-            x_i = target[0, :]
-            # TODO I think there's maybe a type/embedding issue here?
-            for i in range(1, target.shape[0]):
-                output, (h_i, c_i) = self.decoder.forward(x_i, h_i, c_i)
+            embedded_trget = self.embed_in.forward(self.one_hot_emb(target))
+            x_i = embedded_trget[0, :].unsqueeze(0)
+            for i in range(1, embedded_trget.shape[0]):
+                dec_out, (h_i, c_i) = self.decoder.forward(x_i, (h_i, c_i))
+                output = self.embed_out(dec_out)
                 outputs.append(output)
-                x_i = target[i]
-        else:
-            x_i = self.SENTENCES.stoi[START_TOK]
+                if random.random() > teacher_forcing_rate:
+                    pred = output.max(2)[1]
+                    x_i = self.embed_in(self.one_hot_emb(pred))
+                else:
+                    x_i = embedded_trget[i].unsqueeze(0)
+        else: # test mode, not batch mode
+            x_i = torch.tensor([[self.SENTENCES.vocab.stoi[END_TOK]]])
+            x_i = self.embed_in(self.one_hot_emb(x_i.long()))
             while True:
-                output, (h_i, c_i) = self.decoder.forward(x_i, h_i, c_i)
+                dec_out, (h_i, c_i) = self.decoder.forward(x_i, (h_i, c_i))
+                output = self.embed_out(dec_out)
                 outputs.append(output)
-                pred = output.max(1)[1]
-                x_i = pred
-                if pred == self.SENTENCES.stoi[END_TOK]:
+                pred = output.max(2)[1].squeeze(0)
+                x_i = self.embed_in(self.one_hot_emb(pred)).unsqueeze(0)
+                if pred[0] == self.SENTENCES.vocab.stoi[END_TOK]:
                     break
-
+        outputs = torch.cat(outputs).permute([0, 2, 1])
+        
         return outputs
 >>>>>>> 757e405d4f4e00af518576cb500cc19d6903b01c
