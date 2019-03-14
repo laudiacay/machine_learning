@@ -1,3 +1,4 @@
 ml/
 *.pth
+.vector_cache
 *.tsv
