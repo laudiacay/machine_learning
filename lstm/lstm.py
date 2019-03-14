@@ -46,11 +46,13 @@ class Seq2Seq(nn.Module):
         self.SENTENCES = SENTENCES
         self.vocab_size = len(self.SENTENCES.vocab)
         
-        self.one_hot_emb = nn.Embedding(self.vocab_size, self.vocab_size)
-        self.one_hot_emb.weight.data = torch.eye(self.vocab_size)
-        self.one_hot_emb.weight.requires_grad = False
-
-        self.embed_in = nn.Linear(self.vocab_size, EMBEDDING_SIZE)
+        #self.one_hot_emb = nn.Embedding(self.vocab_size, self.vocab_size)
+        #self.one_hot_emb.weight.data = torch.eye(self.vocab_size)
+        #self.one_hot_emb.weight.requires_grad = False
+        self.embed = nn.Embedding(self.vocab_size, EMBEDDING_SIZE)
+        self.embed.weight.data.copy_(SENTENCES.vocab.vectors)
+        
+        #self.embed_in = nn.Linear(self.vocab_size, EMBEDDING_SIZE)
         self.encoder = nn.LSTM(EMBEDDING_SIZE, self.hid_size)
         self.decoder = nn.LSTM(EMBEDDING_SIZE, self.hid_size)
         self.embed_out = nn.Linear(self.hid_size, self.vocab_size)
@@ -58,16 +60,18 @@ class Seq2Seq(nn.Module):
     def init_hidden(self, batch_size):
         return torch.zeros([batch_size, self.hid_size]).unsqueeze(0)
 
-    def forward(self, first_sent, target, teacher_forcing_rate=0.5):
+    def forward(self, first_sent, target, teacher_forcing_rate=0.1):
         batch_size = first_sent.shape[1]
-        embedded_input = self.embed_in.forward(self.one_hot_emb(first_sent))
+        #embedded_input = self.embed_in.forward(self.one_hot_emb(first_sent))
+        embedded_input = self.embed(first_sent)
         h_i, c_i = self.init_hidden(batch_size), self.init_hidden(batch_size)
         _, (h_i, c_i) = self.encoder.forward(embedded_input, (h_i, c_i))
 
         outputs = []
 
         if target is not None:
-            embedded_trget = self.embed_in.forward(self.one_hot_emb(target))
+            #embedded_trget = self.embed_in.forward(self.one_hot_emb(target))
+            embedded_trget = self.embed(target)
             x_i = embedded_trget[0, :].unsqueeze(0)
             for i in range(1, embedded_trget.shape[0]):
                 dec_out, (h_i, c_i) = self.decoder.forward(x_i, (h_i, c_i))
@@ -75,21 +79,23 @@ class Seq2Seq(nn.Module):
                 outputs.append(output)
                 if random.random() > teacher_forcing_rate:
                     pred = output.max(2)[1]
-                    x_i = self.embed_in(self.one_hot_emb(pred))
+                    #x_i = self.embed_in(self.one_hot_emb(pred))
+                    x_i = self.embed(pred)
                 else:
                     x_i = embedded_trget[i].unsqueeze(0)
         else: # test mode, not batch mode
             x_i = torch.tensor([[self.SENTENCES.vocab.stoi[END_TOK]]])
-            x_i = self.embed_in(self.one_hot_emb(x_i.long()))
+            #x_i = self.embed_in(self.one_hot_emb(x_i.long()))
+            x_i = self.embed(x_i.long())
             while True:
                 dec_out, (h_i, c_i) = self.decoder.forward(x_i, (h_i, c_i))
                 output = self.embed_out(dec_out)
                 outputs.append(output)
                 pred = output.max(2)[1].squeeze(0)
-                x_i = self.embed_in(self.one_hot_emb(pred)).unsqueeze(0)
+                #x_i = self.embed_in(self.one_hot_emb(pred)).unsqueeze(0)
+                x_i = self.embed(pred).unsqueeze(0)
                 if pred[0] == self.SENTENCES.vocab.stoi[END_TOK]:
                     break
         outputs = torch.cat(outputs).permute([0, 2, 1])
         
         return outputs
->>>>>>> 757e405d4f4e00af518576cb500cc19d6903b01c

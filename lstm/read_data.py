@@ -2,7 +2,7 @@ import torchtext
 from torchtext import data
 import torch
 
-EMBEDDING_SIZE = 64
+EMBEDDING_SIZE = 200
 
 PAD_TOK = '<pad>'
 START_TOK = '<s>'
@@ -22,6 +22,7 @@ def build_dataset():
     SENTENCES.build_vocab(train, dev, test)
 
     # random embedding
+    '''
     random_embedding = [torch.rand(EMBEDDING_SIZE) / 5.0 - 0.1
                             for _ in range(len(SENTENCES.vocab))]
     SENTENCES.vocab.set_vectors(
@@ -29,9 +30,9 @@ def build_dataset():
         random_embedding,
         EMBEDDING_SIZE
     )
-    
+    '''
     # or, pretrained embeddings
-    #SENTENCES.vocab.load_vectors('glove.6B.200d')
+    SENTENCES.vocab.load_vectors('glove.6B.200d')
 
     return train, dev, test, SENTENCES
 
